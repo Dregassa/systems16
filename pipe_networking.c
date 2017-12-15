@@ -11,29 +11,28 @@
   returns the file descriptor for the upstream pipe.
   =========================*/
 int server_handshake(int *to_client) {
-  char privateFIFO_name[1024];
-  char client_conf[1024];
+  char buffer [HANDSHAKE_BUFFER_SIZE];
 
   //initially remove it in case it already exists
   remove("wkp");
 
   //creates well known pipe (upstream: client -> server)
-  mkfifo("wkp", 0666);
+  mkfifo("wkp", 0600);
 
   //server receives client’s message and removes wkp
   int up = open("wkp", O_RDONLY);
-  read(up, privateFIFO_name, sizeof(privateFIFO_name));
-  printf("server recieved this message from the client: %s\n", privateFIFO_name);
+  read(up, buffer, sizeof(buffer));
+  printf("server recieved this message from the client: %s\n", buffer);
   remove("wkp");
 
   //server opens private FIFO (downstream: server -> client) and sends client a confirmation message
-  int down = open(privateFIFO_name, O_WRONLY);
+  int down = open(buffer, O_WRONLY, 0);
   write(down, "client messaged recieved by server", sizeof("client messaged recieved by server"));
 
   //server recieves final confirmation from the client
-  read(up, client_conf, sizeof(client_conf));
-  printf("last message from client to server: %s\n", client_conf);
-  
+  read(up, buffer, sizeof(buffer));
+  printf("last message from client to server: %s\n", buffer);
+
   *to_client = down;
   return up;
 }
@@ -49,7 +48,7 @@ int server_handshake(int *to_client) {
   returns the file descriptor for the downstream pipe.
   =========================*/
 int client_handshake(int *to_server) {
-  char server_conf[1024];
+  char buffer[HANDSHAKE_BUFFER_SIZE];
 
   //initially remove it in case it already exists
   remove("private");
@@ -67,8 +66,8 @@ int client_handshake(int *to_server) {
   int down = open("private", O_RDONLY);
 
   //recieves server's confirmation and removes private FIFO
-  read(down, server_conf, sizeof(server_conf));
-  printf("client recieved this message from the server: %s\n", server_conf);
+  read(down, buffer, sizeof(buffer));
+  printf("client recieved this message from the server: %s\n", buffer);
   remove("private");
 
   //client sends a confirmation message to server
